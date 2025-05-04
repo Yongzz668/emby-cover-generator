@@ -1,0 +1,1 @@
+console.log('Cover Generator loaded');
