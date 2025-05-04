@@ -1,7 +1,6 @@
 name = "emby-cover-generator"
 main = "worker.js"
 compatibility_date = "2023-05-15"
-compatibility_flags = [ "nodejs_compat" ]
 
-[build.upload]
-format = "modules"
+[site]
+bucket = "./"  # 静态文件目录（包含 index.html）
