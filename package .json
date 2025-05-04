@@ -1,0 +1,8 @@
+{
+  "name": "emby-cover-generator",
+  "version": "1.0.0",
+  "main": "worker.js",
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.25"
+  }
+}

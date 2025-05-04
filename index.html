@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Emby 封面生成器</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --fg: #1d1d1f;
+      --accent: #0066cc;
+      --radius: 6px;
+      --padding: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 480px;
+      margin: 60px auto;
+      padding: var(--padding);
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .field {
+      margin-bottom: 1.25rem;
+    }
+    .field label {
+      display: block;
+      font-size: .9rem;
+      margin-bottom: .5rem;
+    }
+    .field input[type="text"],
+    .field input[type="url"],
+    .field input[type="file"],
+    .field select {
+      width: 100%;
+      padding: .75rem;
+      border: 1px solid #ccc;
+      border-radius: var(--radius);
+      font-size: 1rem;
+    }
+    .radios, .buttons {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .radios label {
+      flex: 1;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: var(--radius);
+      padding: .75rem;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      font-size: .9rem;
+    }
+    .radios input[type="radio"] {
+      display: none;
+    }
+    .radios input[type="radio"]:checked + label {
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: bold;
+    }
+    button {
+      width: 100%;
+      padding: .75rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    button:hover {
+      background: #005bb5;
+    }
+    button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+    }
+    .small-note {
+      font-size: .8rem;
+      color: #555;
+      margin-top: -.75rem;
+      margin-bottom: 1rem;
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Emby 封面生成器</h1>
+
+    <div class="field">
+      <label for="emby-url">Emby 地址</label>
+      <input type="url" id="emby-url" placeholder="https://your-emby.example.com">
+    </div>
+
+    <div class="field">
+      <label for="emby-key">API 密钥</label>
+      <input type="text" id="emby-key" placeholder="XXXXXXXXXXXXXXXXXXXXXXXX">
+    </div>
+
+    <div class="field">
+      <label>时间范围</label>
+      <div class="radios">
+        <input type="radio" id="t1" name="time" value="6h" checked><label for="t1">6 小时</label>
+        <input type="radio" id="t2" name="time" value="12h"><label for="t2">12 小时</label>
+        <input type="radio" id="t3" name="time" value="3d"><label for="t3">3 天</label>
+        <input type="radio" id="t4" name="time" value="7d"><label for="t4">7 天</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="rule">生成规则</label>
+      <select id="rule">
+        <option value="emby">按 Emby 分类规则</option>
+        <option value="recent">最近添加</option>
+        <option value="popular">最受欢迎</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="font-file">导入本地字体</label>
+      <input type="file" id="font-file" accept=".ttf,.otf">
+      <div class="small-note">导入后可在"字体"下拉框中选择</div>
+    </div>
+
+    <div class="field">
+      <label for="font-select">字体</label>
+      <select id="font-select">
+        <option value="system">系统默认</option>
+        <option value="Arial">Arial</option>
+        <option value="Helvetica">Helvetica</option>
+      </select>
+    </div>
+
+    <div class="loading" id="loading">
+      正在生成封面，请稍候...
+    </div>
+
+    <button id="generate-btn">生成并保存封面</button>
+  </div>
+
+  <script>
+    // 字体加载功能
+    document.getElementById('font-file').addEventListener('change', async evt => {
+      const file = evt.target.files[0];
+      if (!file) return;
+      const name = file.name.replace(/\.\w+$/, '');
+      const data = await file.arrayBuffer();
+      
+      try {
+        const font = new FontFace(name, data);
+        await font.load();
+        document.fonts.add(font);
+        
+        const select = document.getElementById('font-select');
+        const opt = new Option(name, name);
+        select.appendChild(opt);
+        
+        // 自动选择新添加的字体
+        select.value = name;
+      } catch (error) {
+        console.error('字体加载失败:', error);
+        alert(`字体加载失败: ${error.message}`);
+      }
+    });
+
+    // 生成按钮点击处理
+    document.getElementById('generate-btn').addEventListener('click', async () => {
+      const url = document.getElementById('emby-url').value.trim();
+      const key = document.getElementById('emby-key').value.trim();
+      const time = document.querySelector('input[name="time"]:checked').value;
+      const rule = document.getElementById('rule').value;
+      const font = document.getElementById('font-select').value;
+
+      if (!url) {
+        alert('请填写Emby地址');
+        return;
+      }
+
+      if (!key) {
+        alert('请填写API密钥');
+        return;
+      }
+
+      try {
+        const generateBtn = document.getElementById('generate-btn');
+        const loading = document.getElementById('loading');
+        
+        generateBtn.disabled = true;
+        loading.style.display = 'block';
+        
+        // 这里需要替换为你部署后的Worker地址
+        const workerUrl = 'https://your-worker.your-subdomain.workers.dev/generate';
+        
+        const resp = await fetch(workerUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            embyUrl: url,
+            apiKey: key,
+            timeRange: time,
+            rule,
+            font
+          })
+        });
+
+        if (!resp.ok) {
+          const errorText = await resp.text();
+          throw new Error(errorText || '生成失败');
+        }
+
+        const blob = await resp.blob();
+        const downloadUrl = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `emby-cover-${new Date().toISOString().slice(0,10)}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+        
+      } catch (error) {
+        console.error('生成失败:', error);
+        alert(`生成失败: ${error.message}`);
+      } finally {
+        document.getElementById('generate-btn').disabled = false;
+        document.getElementById('loading').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
