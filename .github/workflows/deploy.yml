@@ -1,7 +1,21 @@
-steps:
-  - name: Install dependencies
-    run: npm install  # 如果 package.json 有依赖
-  - name: Deploy
-    run: wrangler deploy
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+name: Deploy to Cloudflare Worker
+
+# 明确定义触发条件（两种方式任选或同时使用）
+on:
+  push:
+    branches: [ "main" ]   # 只在推送到 main 分支时触发
+  workflow_dispatch:       # 允许手动在 GitHub 网页触发
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3  # 拉取代码
+
+      - name: Install Wrangler
+        run: npm install -g wrangler  # 安装 Cloudflare 命令行工具
+
+      - name: Deploy Worker
+        run: wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}  # 使用存储的密钥
